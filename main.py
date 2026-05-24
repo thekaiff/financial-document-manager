@@ -13,10 +13,10 @@ import vector_store
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-# ── Create tables ──
+
 Base.metadata.create_all(bind=engine)
 
-# ── App setup ──
+# App setup: 
 app = FastAPI(
     title="Financial Document Management API",
     description="""
@@ -43,7 +43,6 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 app.mount("/ui", StaticFiles(directory="static", html=True), name="ui")
 
 
-# This creates the "Authorize" button in Swagger UI
 security = HTTPBearer()
 
 UPLOAD_DIR = "uploads"
@@ -55,9 +54,8 @@ VALID_PERMISSIONS = ["full_access", "upload_edit", "review", "view"]
 ROLE_LEVELS = {"view": 1, "review": 2, "upload_edit": 3, "full_access": 4}
 
 
-# ─────────────────────────────────────────────
-# HELPER FUNCTIONS
-# ─────────────────────────────────────────────
+
+# helper func:
 
 def get_db():
     return SessionLocal()
@@ -114,9 +112,8 @@ def extract_text(file_path: str) -> str:
         return ""
 
 
-# ─────────────────────────────────────────────
-# AUTH (no token needed)
-# ─────────────────────────────────────────────
+
+# auth:
 
 @app.post("/auth/register", response_model=UserOut, status_code=201, tags=["Auth"])
 def register(data: UserRegister):
@@ -157,9 +154,8 @@ def login(data: UserLogin):
     return TokenResponse(access_token=token)
 
 
-# ─────────────────────────────────────────────
-# ROLES (token needed)
-# ─────────────────────────────────────────────
+
+# roles:
 
 @app.post("/roles/create", response_model=RoleOut, status_code=201, tags=["Roles"])
 def create_role(data: RoleCreate, current_user: User = Depends(get_current_user)):
@@ -189,6 +185,16 @@ def list_roles(current_user: User = Depends(get_current_user)):
     roles = db.query(Role).all()
     db.close()
     return [{"id": r.id, "name": r.name, "permission": r.permission} for r in roles]
+
+@app.get("/users", tags=["Roles"])
+def list_users(current_user: User = Depends(get_current_user)):
+    """List all users. Admin only."""
+    check_permission(current_user, "full_access")
+
+    db = get_db()
+    users = db.query(User).all()
+    db.close()
+    return [{"id": u.id, "username": u.username, "email": u.email, "role_id": u.role_id} for u in users]
 
 @app.post("/users/assign-role", tags=["Roles"])
 def assign_role(data: AssignRole, current_user: User = Depends(get_current_user)):
@@ -264,9 +270,8 @@ def get_user_permissions(user_id: str, current_user: User = Depends(get_current_
     }
 
 
-# ─────────────────────────────────────────────
-# DOCUMENTS
-# ─────────────────────────────────────────────
+# docs:
+
 
 @app.post("/documents/upload", response_model=DocumentOut, status_code=201, tags=["Documents"])
 def upload_document(
@@ -386,9 +391,9 @@ def delete_user(user_id: str, current_user: User = Depends(get_current_user)):
     db.commit()
     db.close()
     return {"message": f"User '{username}' deleted"}
-# ─────────────────────────────────────────────
-# RAG - AI SEMANTIC SEARCH
-# ─────────────────────────────────────────────
+
+
+# RAG:
 
 @app.post("/rag/index-document", tags=["RAG"])
 def index_document(document_id: str, current_user: User = Depends(get_current_user)):
@@ -441,9 +446,8 @@ def get_context(document_id: str, current_user: User = Depends(get_current_user)
     return {"document_id": document_id, "total_chunks": len(chunks), "chunks": chunks}
 
 
-# ─────────────────────────────────────────────
-# HEALTH
-# ─────────────────────────────────────────────
+
+# heath:
 
 @app.get("/", tags=["Health"])
 def health():
