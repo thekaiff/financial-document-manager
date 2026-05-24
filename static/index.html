@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinDoc Manager</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #fafaf9; --surface: #ffffff; --border: #e7e5e4;
+            --text: #1c1917; --text-secondary: #78716c;
+            --accent: #0f766e; --accent-light: #f0fdfa; --accent-hover: #0d9488;
+            --danger: #dc2626; --danger-light: #fef2f2;
+            --success: #16a34a; --success-light: #f0fdf4;
+            --code-bg: #f5f5f4;
+            --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+            --radius: 10px;
+            --header-h: 56px;
+            --sidebar-w: 210px;
+        }
+        html, body { height: 100%; }
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ── HEADER ── */
+        .header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+            height: var(--header-h);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .logo {
+            font-size: 17px; font-weight: 700; color: var(--accent);
+            display: flex; align-items: center; gap: 8px;
+            white-space: nowrap;
+        }
+        .logo svg { width: 22px; height: 22px; flex-shrink: 0; }
+        .header-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+        .header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        .user-badge {
+            font-size: 12px; color: var(--text-secondary);
+            background: var(--code-bg); padding: 3px 10px;
+            border-radius: 20px; display: none; align-items: center; gap: 6px;
+            max-width: 180px; overflow: hidden;
+        }
+        .user-badge.active { display: flex; }
+        .user-badge span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .user-badge .dot { width: 6px; height: 6px; background: var(--success); border-radius: 50%; flex-shrink: 0; }
+        .hamburger {
+            display: none; background: none;
+            border: 1px solid var(--border); border-radius: 6px;
+            padding: 6px 8px; cursor: pointer; flex-shrink: 0;
+        }
+        .hamburger svg { width: 20px; height: 20px; stroke: var(--text); display: block; }
+
+        /* ── LAYOUT ── */
+        .layout { display: flex; min-height: calc(100vh - var(--header-h)); position: relative; }
+
+        /* ── SIDEBAR ── */
+        .sidebar {
+            width: var(--sidebar-w);
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            padding: 14px 10px;
+            flex-shrink: 0;
+            overflow-y: auto;
+            position: sticky;
+            top: var(--header-h);
+            height: calc(100vh - var(--header-h));
+        }
+        .nav-section { margin-bottom: 18px; }
+        .nav-label {
+            font-size: 10px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 1px;
+            color: var(--text-secondary); padding: 0 10px; margin-bottom: 4px;
+        }
+        .nav-item {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 10px; border-radius: 7px; cursor: pointer;
+            font-size: 13px; font-weight: 500; color: var(--text-secondary);
+            transition: all 0.15s; border: none; background: none;
+            width: 100%; text-align: left; white-space: nowrap;
+        }
+        .nav-item:hover { background: var(--code-bg); color: var(--text); }
+        .nav-item.active { background: var(--accent-light); color: var(--accent); }
+        .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+        /* ── MAIN ── */
+        .main {
+            flex: 1;
+            padding: 24px 32px;
+            min-width: 0; /* critical: prevents flex child from overflowing */
+            overflow-x: hidden;
+        }
+        .page { display: none; }
+        .page.active { display: block; }
+        .page-title { font-size: 20px; font-weight: 700; margin-bottom: 3px; }
+        .page-desc { font-size: 13px; color: var(--text-secondary); margin-bottom: 20px; }
+
+        /* ── CARDS ── */
+        .card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 20px;
+            margin-bottom: 14px; box-shadow: var(--shadow);
+        }
+        .card-title {
+            font-size: 14px; font-weight: 600; margin-bottom: 14px;
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+        }
+        .card-title .method {
+            font-size: 10px; font-weight: 700; padding: 2px 7px;
+            border-radius: 4px; font-family: 'JetBrains Mono', monospace;
+            flex-shrink: 0;
+        }
+        .method-post { background: #dbeafe; color: #1d4ed8; }
+        .method-get  { background: #d1fae5; color: #059669; }
+        .method-delete { background: #fee2e2; color: #dc2626; }
+
+        /* ── FORMS ── */
+        .form-group { margin-bottom: 12px; }
+        .form-group label {
+            display: block; font-size: 12px; font-weight: 500;
+            margin-bottom: 4px; color: var(--text-secondary);
+        }
+        input[type="text"], input[type="password"], input[type="email"],
+        select, textarea {
+            width: 100%; padding: 8px 11px;
+            border: 1px solid var(--border); border-radius: 7px;
+            font-size: 13px; font-family: 'DM Sans', sans-serif;
+            background: var(--bg); outline: none;
+            transition: border-color 0.15s;
+        }
+        input:focus, select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(15,118,110,0.08);
+        }
+        input[type="file"] { font-size: 12px; padding: 7px; }
+
+        /* ── BUTTONS ── */
+        .btn {
+            padding: 8px 18px; border-radius: 7px; font-size: 13px;
+            font-weight: 600; font-family: 'DM Sans', sans-serif;
+            cursor: pointer; border: none; transition: all 0.15s;
+            display: inline-flex; align-items: center; gap: 5px;
+            white-space: nowrap;
+        }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-outline { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+        .btn-outline:hover { background: var(--code-bg); }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:hover { background: #b91c1c; }
+        .btn-sm { padding: 5px 12px; font-size: 12px; }
+        .btn-copy {
+            padding: 3px 8px; font-size: 11px; border-radius: 4px;
+            background: var(--code-bg); color: var(--text-secondary);
+            border: 1px solid var(--border); cursor: pointer;
+            font-family: 'DM Sans', sans-serif; transition: all 0.15s;
+            white-space: nowrap;
+        }
+        .btn-copy:hover { background: var(--accent-light); color: var(--accent); }
+
+        /* ── RESPONSE BOX ── */
+        .response-box { margin-top: 12px; display: none; }
+        .response-box.show { display: block; }
+        .response-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .status-badge {
+            font-size: 11px; font-weight: 600; padding: 2px 8px;
+            border-radius: 10px; font-family: 'JetBrains Mono', monospace;
+        }
+        .status-ok  { background: var(--success-light); color: var(--success); }
+        .status-err { background: var(--danger-light);  color: var(--danger); }
+        .response-body {
+            background: #1e1e1e; color: #d4d4d4;
+            padding: 14px; border-radius: 7px;
+            font-family: 'JetBrains Mono', monospace; font-size: 12px;
+            line-height: 1.7; overflow-x: auto; white-space: pre-wrap;
+            max-height: 350px; overflow-y: auto;
+            word-break: break-all; /* prevent long tokens from bursting out */
+        }
+
+        /* ── TOKEN BAR ── */
+        .token-bar {
+            background: var(--accent-light); border: 1px solid #99f6e4;
+            border-radius: 7px; padding: 10px 14px; margin-bottom: 18px;
+            display: none; align-items: center; gap: 8px;
+            font-size: 12px; flex-wrap: wrap;
+        }
+        .token-bar.show { display: flex; }
+        .token-bar code {
+            font-family: 'JetBrains Mono', monospace; font-size: 10px;
+            background: rgba(0,0,0,0.05); padding: 2px 6px;
+            border-radius: 4px;
+            max-width: 180px; overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap;
+        }
+        .token-bar .btn-sm { margin-left: auto; flex-shrink: 0; }
+
+        /* ── ID DISPLAY ── */
+        .id-display {
+            display: inline-flex; align-items: center; gap: 4px;
+            background: var(--code-bg); padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace; font-size: 11px;
+            max-width: 100%;
+        }
+
+        /* ── RESULT CARDS ── */
+        .result-card {
+            background: var(--bg); border: 1px solid var(--border);
+            border-radius: 7px; padding: 12px 14px; margin-bottom: 8px;
+        }
+        .result-meta { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; flex-wrap: wrap; }
+        .result-score {
+            font-size: 11px; font-weight: 700; padding: 2px 7px;
+            border-radius: 10px; font-family: 'JetBrains Mono', monospace;
+        }
+        .score-high { background: #d1fae5; color: #059669; }
+        .score-mid  { background: #fef3c7; color: #d97706; }
+        .score-low  { background: #fee2e2; color: #dc2626; }
+        .result-tag {
+            font-size: 10px; padding: 2px 7px; border-radius: 4px;
+            background: var(--code-bg); color: var(--text-secondary);
+        }
+        .result-text { font-size: 12px; color: var(--text); line-height: 1.6; }
+
+        /* ── TABLE (with horizontal scroll wrapper) ── */
+        .table-scroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .doc-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 480px; }
+        .doc-table th {
+            text-align: left; padding: 8px 10px;
+            border-bottom: 2px solid var(--border);
+            font-size: 11px; font-weight: 600;
+            color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+        .doc-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+        .doc-table tr:hover td { background: var(--code-bg); }
+        .type-badge { font-size: 10px; padding: 2px 7px; border-radius: 4px; font-weight: 600; }
+        .type-invoice  { background: #dbeafe; color: #1d4ed8; }
+        .type-report   { background: #d1fae5; color: #059669; }
+        .type-contract { background: #fce7f3; color: #be185d; }
+
+        /* ── INLINE FORM ── */
+        .inline-form { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+        .inline-form .form-group { margin-bottom: 0; flex: 1 1 140px; min-width: 0; }
+        .inline-form .btn { flex-shrink: 0; }
+
+        /* ── MISC ── */
+        .empty-state { text-align: center; padding: 30px 16px; color: var(--text-secondary); font-size: 13px; }
+        .info-bar {
+            background: #eff6ff; border: 1px solid #bfdbfe;
+            border-radius: 7px; padding: 10px 14px;
+            margin-bottom: 14px; font-size: 12px; color: #1e40af;
+        }
+
+        /* ── OVERLAY ── */
+        .overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.3); z-index: 98;
+        }
+        .overlay.show { display: block; }
+
+        /* ════════════════════════════════════════
+           RESPONSIVE — TABLET  (≤ 1024px)
+        ════════════════════════════════════════ */
+        @media (max-width: 1024px) {
+            :root { --sidebar-w: 180px; }
+            .main { padding: 20px 24px; }
+        }
+
+        /* ════════════════════════════════════════
+           RESPONSIVE — MOBILE  (≤ 768px)
+        ════════════════════════════════════════ */
+        @media (max-width: 768px) {
+            :root { --sidebar-w: 240px; }
+
+            .header { padding: 0 14px; }
+            .hamburger { display: flex; align-items: center; justify-content: center; }
+            .user-badge { max-width: 120px; }
+
+            /* Sidebar slides in from left, sits above content */
+            .sidebar {
+                position: fixed;
+                left: calc(-1 * var(--sidebar-w) - 4px);
+                top: var(--header-h);
+                bottom: 0;
+                height: auto;
+                z-index: 99;
+                transition: left 0.25s ease;
+                box-shadow: 2px 0 16px rgba(0,0,0,0.12);
+                overflow-y: auto;
+            }
+            .sidebar.open { left: 0; }
+
+            .main { padding: 14px 14px; }
+            .card { padding: 14px; }
+
+            /* Stack inline-form items vertically */
+            .inline-form { flex-direction: column; gap: 10px; }
+            .inline-form .form-group { flex: none; width: 100%; }
+            .inline-form .btn { width: 100%; justify-content: center; }
+
+            /* Token bar: token on its own line on very small screens */
+            .token-bar { gap: 6px; }
+            .token-bar code { max-width: calc(100vw - 180px); }
+            .token-bar .btn-sm { margin-left: 0; }
+
+            /* Table: always scrollable */
+            .doc-table { font-size: 11px; }
+            .doc-table th, .doc-table td { padding: 6px 7px; }
+
+            /* Response body: narrower on mobile */
+            .response-body { font-size: 11px; }
+
+            .page-title { font-size: 17px; }
+        }
+
+        /* ════════════════════════════════════════
+           RESPONSIVE — SMALL MOBILE  (≤ 400px)
+        ════════════════════════════════════════ */
+        @media (max-width: 400px) {
+            .header { padding: 0 10px; }
+            .logo { font-size: 15px; }
+            .main { padding: 10px 10px; }
+            .card { padding: 12px 10px; }
+            .btn { padding: 7px 12px; font-size: 12px; }
+            .token-bar code { max-width: 120px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="header-left">
+        <button class="hamburger" onclick="toggleSidebar()" aria-label="Toggle menu">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <line x1="3" y1="12" x2="21" y2="12"/>
+                <line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+        </button>
+        <div class="logo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+            FinDoc Manager
+        </div>
+    </div>
+    <div class="header-right">
+        <div class="user-badge" id="userBadge">
+            <span class="dot"></span>
+            <span id="userLabel"></span>
+        </div>
+        <button class="btn btn-outline btn-sm" id="logoutBtn" style="display:none" onclick="logout()">Logout</button>
+    </div>
+</div>
+
+<div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+<div class="layout">
+
+    <!-- ── SIDEBAR ── -->
+    <div class="sidebar" id="sidebar">
+        <div class="nav-section">
+            <div class="nav-label">Auth</div>
+            <button class="nav-item active" data-page="login" onclick="nav(this,'login')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                    <polyline points="10 17 15 12 10 7"/>
+                    <line x1="15" y1="12" x2="3" y2="12"/>
+                </svg>Login
+            </button>
+            <button class="nav-item" data-page="register" onclick="nav(this,'register')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="8.5" cy="7" r="4"/>
+                    <line x1="20" y1="8" x2="20" y2="14"/>
+                    <line x1="23" y1="11" x2="17" y2="11"/>
+                </svg>Register
+            </button>
+        </div>
+        <div class="nav-section">
+            <div class="nav-label">Roles</div>
+            <button class="nav-item" data-page="roles" onclick="nav(this,'roles')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>Manage Roles
+            </button>
+        </div>
+        <div class="nav-section">
+            <div class="nav-label">Documents</div>
+            <button class="nav-item" data-page="upload" onclick="nav(this,'upload')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>Upload
+            </button>
+            <button class="nav-item" data-page="documents" onclick="nav(this,'documents')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                </svg>All Documents
+            </button>
+            <button class="nav-item" data-page="metasearch" onclick="nav(this,'metasearch')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>Metadata Search
+            </button>
+        </div>
+        <div class="nav-section">
+            <div class="nav-label">RAG / AI</div>
+            <button class="nav-item" data-page="index" onclick="nav(this,'index')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="4 7 4 4 20 4 20 7"/>
+                    <line x1="9" y1="20" x2="15" y2="20"/>
+                    <line x1="12" y1="4" x2="12" y2="20"/>
+                </svg>Index Document
+            </button>
+            <button class="nav-item" data-page="search" onclick="nav(this,'search')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>Semantic Search
+            </button>
+            <button class="nav-item" data-page="context" onclick="nav(this,'context')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"/>
+                    <rect x="14" y="3" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/>
+                    <rect x="3" y="14" width="7" height="7"/>
+                </svg>View Chunks
+            </button>
+        </div>
+    </div>
+
+    <!-- ── MAIN ── -->
+    <div class="main">
+        <div class="token-bar" id="tokenBar">
+            🔐 Authenticated — Token: <code id="tokenPreview"></code>
+            <button class="btn-copy btn-sm" onclick="copyTk()">Copy Token</button>
+        </div>
+
+        <!-- LOGIN -->
+        <div class="page active" id="page-login">
+            <div class="page-title">Login</div>
+            <div class="page-desc">Authenticate to get a JWT token. All other endpoints require this token.</div>
+            <div class="card">
+                <div class="card-title"><span class="method method-post">POST</span>/auth/login</div>
+                <div class="form-group"><label>Email</label><input type="email" id="loginEmail" value="admin@example.com"></div>
+                <div class="form-group"><label>Password</label><input type="password" id="loginPass" value="admin123"></div>
+                <button class="btn btn-primary" onclick="doLogin()">Login</button>
+                <div class="response-box" id="resp-login"></div>
+            </div>
+        </div>
+
+        <!-- REGISTER -->
+        <div class="page" id="page-register">
+            <div class="page-title">Register</div>
+            <div class="page-desc">Create a new user. New users start with no role — an admin must assign one.</div>
+            <div class="card">
+                <div class="card-title"><span class="method method-post">POST</span>/auth/register</div>
+                <div class="form-group"><label>Email</label><input type="email" id="regEmail" placeholder="user@example.com"></div>
+                <div class="form-group"><label>Username</label><input type="text" id="regUser" placeholder="johndoe"></div>
+                <div class="form-group"><label>Password</label><input type="password" id="regPass" placeholder="password"></div>
+                <button class="btn btn-primary" onclick="doRegister()">Register</button>
+                <div class="response-box" id="resp-register"></div>
+            </div>
+        </div>
+
+        <!-- ROLES -->
+        <div class="page" id="page-roles">
+            <div class="page-title">Roles &amp; Permissions</div>
+            <div class="page-desc">Manage roles, assign them to users, view permissions. Admin only.</div>
+            <div id="rolesInfo" class="info-bar" style="display:none"></div>
+            <div class="card">
+                <div class="card-title"><span class="method method-get">GET</span>/roles — Available Roles</div>
+                <button class="btn btn-primary btn-sm" onclick="doListRoles()" style="margin-bottom:10px">Load Roles</button>
+                <div class="table-scroll" id="rolesList"></div>
+            </div>
+            <div class="card">
+                <div class="card-title"><span class="method method-get">GET</span>/users — All Users (Admin)</div>
+                <button class="btn btn-primary btn-sm" onclick="doListUsers()" style="margin-bottom:10px">Load Users</button>
+                <div class="table-scroll" id="usersList"></div>
+            </div>
+            <div class="card">
+                <div class="card-title"><span class="method method-post">POST</span>/roles/create</div>
+                <div class="inline-form">
+                    <div class="form-group"><label>Role Name</label><input type="text" id="roleName" placeholder="e.g. manager"></div>
+                    <div class="form-group"><label>Permission</label>
+                        <select id="rolePerm">
+                            <option value="full_access">full_access</option>
+                            <option value="upload_edit">upload_edit</option>
+                            <option value="review">review</option>
+                            <option value="view">view</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="doCreateRole()">Create</button>
+                </div>
+                <div class="response-box" id="resp-createrole"></div>
+            </div>
+            <div class="card">
+                <div class="card-title"><span class="method method-post">POST</span>/users/assign-role</div>
+                <div class="inline-form">
+                    <div class="form-group"><label>User ID</label><input type="text" id="assignUserId" placeholder="paste user UUID"></div>
+                    <div class="form-group"><label>Role ID</label><input type="text" id="assignRoleId" placeholder="paste role UUID"></div>
+                    <button class="btn btn-primary" onclick="doAssignRole()">Assign</button>
+                </div>
+                <div class="response-box" id="resp-assignrole"></div>
+            </div>
+            <div class="card">
+                <div class="card-title"><span class="method method-get">GET</span>/users/{id}/roles &amp; /users/{id}/permissions</div>
+                <div class="inline-form">
+                    <div class="form-group"><label>User ID</label><input type="text" id="viewRoleUserId" placeholder="paste user UUID"></div>
+                    <button class="btn btn-primary" onclick="doGetUserRole()">Get Role</button>
+                    <button class="btn btn-outline" onclick="doGetUserPerms()">Get Permissions</button>
+                </div>
+                <div class="response-box" id="resp-userrole"></div>
+            </div>
+            <div class="card">
+                <div class="card-title"><span class="method method-delete">DELETE</span>/users/{user_id}</div>
+                <div class="inline-form">
+                    <div class="form-group"><label>User ID</label><input type="text" id="deleteUserId" placeholder="paste user UUID"></div>
+                    <button class="btn btn-danger" onclick="doDeleteUser()">Delete User</button>
+                </div>
+                <div class="response-box" id="resp-deleteuser"></div>
+            </div>
+        </div>
+
+        <!-- UPLOAD -->
+        <div class="page" id="page-upload">
+            <div class="page-title">Upload Document</div>
+            <div class="page-desc">Upload a financial document (.txt or .pdf). Text is extracted automatically for AI indexing.</div>
+            <div class="card">
+                <div class="card-title"><span class="method method-post">POST</span>/documents/upload</div>
+                <div class="form-group"><label>Title</label><input type="text" id="docTitle" placeholder="e.g. Q4 Financial Report"></div>
+                <div class="form-group"><label>Company Name</label><input type="text" id="docCompany" placeholder="e.g. Acme Corp"></div>
+                <div class="form-group"><label>Document Type</label>
+                    <select id="docType">
+                        <option value="report">report</option>
+                        <option value="invoice">invoice</option>
+                        <option value="contract">contract</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>File</label><input type="file" id="docFile" accept=".txt,.pdf"></div>
+                <button class="btn btn-primary" onclick="doUpload()">Upload</button>
+                <div class="response-box" id="resp-upload"></div>
+            </div>
+        </div>
+
+        <!-- ALL DOCUMENTS -->
+        <div class="page" id="page-documents">
+            <div class="page-title">All Documents</div>
+            <div class="page-desc">View and manage all uploaded documents. Click an ID to copy it.</div>
+            <div class="card">
+                <div class="card-title"><span class="method method-get">GET</span>/documents</div>
+                <button class="btn btn-primary btn-sm" onclick="doGetDocs()" style="margin-bottom:12px">Load Documents</button>
+                <div class="table-scroll" id="docsTable"></div>
+                <div class="response-box" id="resp-docs"></div>
+            </div>
+            <div class="card">
+                <div class="card-title"><span class="method method-get">GET</span>/documents/{document_id}</div>
+                <div class="inline-form">
+                    <div class="form-group"><label>Document ID</label><input type="text" id="getDocId" placeholder="paste document UUID"></div>
+                    <button class="btn btn-primary" onclick="doGetSingleDoc()">Get Document</button>
+                </div>
+                <div class="response-box" id="resp-singledoc"></div>
+            </div>
+        </div>
+
+        <!-- METADATA SEARCH -->
+        <div class="page" id="page-metasearch">
+            <div class="page-title">Metadata Search</div>
+            <div class="page-desc">Search documents by title, company, or type. This is keyword search, not AI.</div>
+            <div class="card">
+                <div class="card-title"><span class="method method-get">GET</span>/documents/search</div>
+                <div class="inline-form">
+                    <div class="form-group"><label>Title</label><input type="text" id="msTitle" placeholder="optional"></div>
+                    <div class="form-group"><label>Company</label><input type="text" id="msCompany" placeholder="optional"></div>
+                    <div class="form-group"><label>Type</label>
+                        <select id="msType">
+                            <option value="">Any</option>
+                            <option value="report">report</option>
+                            <option value="invoice">invoice</option>
+                            <option value="contract">contract</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="doMetaSearch()">Search</button>
+                </div>
+                <div id="metaResults" style="margin-top:12px"></div>
+            </div>
+        </div>
+
+        <!-- INDEX -->
+        <div class="page" id="page-index">
+            <div class="page-title">Index Document</div>
+            <div class="page-desc">Generate embeddings and store in vector DB. Required before semantic search works.</div>
+            <div class="card">
+                <div class="card-title"><span class="method method-post">POST</span>/rag/index-document</div>
+                <div class="inline-form">
+                    <div class="form-group"><label>Document ID</label><input type="text" id="indexDocId" placeholder="paste document UUID"></div>
+                    <button class="btn btn-primary" onclick="doIndex()">Index</button>
+                </div>
+                <div class="response-box" id="resp-index"></div>
+            </div>
+            <div class="card">
+                <div class="card-title"><span class="method method-delete">DELETE</span>/rag/remove-document/{id}</div>
+                <div class="inline-form">
+                    <div class="form-group"><label>Document ID</label><input type="text" id="removeDocId" placeholder="paste document UUID"></div>
+                    <button class="btn btn-danger btn-sm" onclick="doRemoveIndex()">Remove from Index</button>
+                </div>
+                <div class="response-box" id="resp-removeindex"></div>
+            </div>
+        </div>
+
+        <!-- SEMANTIC SEARCH -->
+        <div class="page" id="page-search">
+            <div class="page-title">Semantic Search</div>
+            <div class="page-desc">AI-powered semantic search using the RAG retrieval pipeline.</div>
+            <div class="info-bar" style="line-height:1.8">
+                <strong>Retrieval Pipeline:</strong> User Query →
+                <strong>Embedding</strong> (text → 384-dim vector) →
+                <strong>Vector Search</strong> (cosine similarity, top 20 candidates) →
+                <strong>Reranking</strong> (keyword overlap scoring) →
+                <strong>Top K Most Relevant Results</strong>
+            </div>
+            <div class="card">
+                <div class="card-title"><span class="method method-post">POST</span>/rag/search</div>
+                <div class="form-group">
+                    <label>Search Query</label>
+                    <input type="text" id="searchQuery" placeholder='e.g. "financial risk related to high debt ratio"'>
+                </div>
+                <div class="form-group">
+                    <label>Top K Results</label>
+                    <select id="searchTopK">
+                        <option value="3">3</option>
+                        <option value="5" selected>5</option>
+                        <option value="10">10</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" onclick="doSearch()">Search</button>
+                <div id="searchResults" style="margin-top:14px"></div>
+            </div>
+        </div>
+
+        <!-- CHUNKS -->
+        <div class="page" id="page-context">
+            <div class="page-title">View Document Chunks</div>
+            <div class="page-desc">See how a document was split into chunks for the vector database.</div>
+            <div class="card">
+                <div class="card-title"><span class="method method-get">GET</span>/rag/context/{document_id}</div>
+                <div class="inline-form">
+                    <div class="form-group"><label>Document ID</label><input type="text" id="contextDocId" placeholder="paste document UUID"></div>
+                    <button class="btn btn-primary" onclick="doGetContext()">Load Chunks</button>
+                </div>
+                <div id="contextResults" style="margin-top:12px"></div>
+            </div>
+        </div>
+    </div><!-- /.main -->
+</div><!-- /.layout -->
+
+<script>
+const API = "http://127.0.0.1:8000";
+let TOKEN = "";
+
+function nav(el, name) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('page-' + name).classList.add('active');
+    el.classList.add('active');
+    // Auto-close sidebar on mobile after nav
+    if (window.innerWidth <= 768) {
+        document.getElementById('sidebar').classList.remove('open');
+        document.getElementById('overlay').classList.remove('show');
+    }
+}
+
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('overlay').classList.toggle('show');
+}
+
+// Close sidebar on resize to desktop
+window.addEventListener('resize', () => {
+    if (window.innerWidth > 768) {
+        document.getElementById('sidebar').classList.remove('open');
+        document.getElementById('overlay').classList.remove('show');
+    }
+});
+
+function authH() { return { "Authorization": "Bearer " + TOKEN }; }
+
+function showResp(id, st, d) {
+    const b = document.getElementById(id);
+    b.classList.add('show');
+    const ok = st >= 200 && st < 300;
+    let body = '';
+    if (typeof d === 'string') {
+        body = d;
+    } else {
+        const json = JSON.stringify(d, null, 2);
+        body = json.replace(/"(id|user_id|role_id|document_id|uploaded_by|access_token)":\s*"([^"]+)"/g,
+            (match, key, val) => `"${key}": "${val}" <button class="btn-copy" onclick="navigator.clipboard.writeText('${val}');this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',1000)" style="position:relative;top:-1px">Copy</button>`
+        );
+    }
+    b.innerHTML = `<div class="response-header">
+        <span class="status-badge ${ok ? 'status-ok' : 'status-err'}">${st}</span>
+        <span style="font-size:11px;color:var(--text-secondary)">${ok ? 'Success' : 'Error'}</span>
+    </div><div class="response-body">${body}</div>`;
+}
+
+async function api(m, p, body, rid) {
+    if (!TOKEN && !p.startsWith('/auth/')) { alert('Please login first!'); return null; }
+    const o = { method: m, headers: { ...authH() } };
+    if (body instanceof FormData) o.body = body;
+    else if (body) { o.headers["Content-Type"] = "application/json"; o.body = JSON.stringify(body); }
+    try {
+        const r = await fetch(API + p, o);
+        const d = await r.json().catch(() => "No body");
+        if (rid) showResp(rid, r.status, d);
+        return { status: r.status, data: d };
+    } catch (e) {
+        if (rid) showResp(rid, 0, "Network error: " + e.message);
+        return null;
+    }
+}
+
+function updateAuth() {
+    const bar = document.getElementById('tokenBar');
+    const badge = document.getElementById('userBadge');
+    const lb = document.getElementById('logoutBtn');
+    if (TOKEN) {
+        bar.classList.add('show');
+        document.getElementById('tokenPreview').textContent = TOKEN.substring(0, 25) + '...';
+        badge.classList.add('active');
+        lb.style.display = '';
+    } else {
+        bar.classList.remove('show');
+        badge.classList.remove('active');
+        lb.style.display = 'none';
+    }
+}
+
+function copyTk() {
+    navigator.clipboard.writeText(TOKEN);
+    const b = event.currentTarget;
+    b.textContent = 'Copied!';
+    setTimeout(() => b.textContent = 'Copy Token', 1200);
+}
+
+function copyId(val, btn) {
+    navigator.clipboard.writeText(val);
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 1000);
+}
+
+function logout() {
+    TOKEN = "";
+    updateAuth();
+    document.getElementById('userLabel').textContent = '';
+    document.querySelector('.nav-item').click();
+}
+
+async function doLogin() {
+    const r = await api('POST', '/auth/login', {
+        email: document.getElementById('loginEmail').value,
+        password: document.getElementById('loginPass').value
+    }, 'resp-login');
+    if (r && r.status === 200) {
+        TOKEN = r.data.access_token;
+        document.getElementById('userLabel').textContent = document.getElementById('loginEmail').value;
+        updateAuth();
+    }
+}
+
+async function doRegister() {
+    await api('POST', '/auth/register', {
+        email: document.getElementById('regEmail').value,
+        username: document.getElementById('regUser').value,
+        password: document.getElementById('regPass').value
+    }, 'resp-register');
+}
+
+async function doCreateRole() {
+    await api('POST', '/roles/create', {
+        name: document.getElementById('roleName').value,
+        permission: document.getElementById('rolePerm').value
+    }, 'resp-createrole');
+}
+
+async function doAssignRole() {
+    await api('POST', '/users/assign-role', {
+        user_id: document.getElementById('assignUserId').value,
+        role_id: document.getElementById('assignRoleId').value
+    }, 'resp-assignrole');
+}
+
+async function doGetUserRole() { await api('GET', `/users/${document.getElementById('viewRoleUserId').value}/roles`, null, 'resp-userrole'); }
+async function doGetUserPerms() { await api('GET', `/users/${document.getElementById('viewRoleUserId').value}/permissions`, null, 'resp-userrole'); }
+async function doDeleteUser() {
+    if (!confirm('Delete this user permanently?')) return;
+    await api('DELETE', `/users/${document.getElementById('deleteUserId').value}`, null, 'resp-deleteuser');
+}
+
+async function doListRoles() {
+    const r = await api('GET', '/roles', null, null);
+    const el = document.getElementById('rolesList');
+    if (!r || !r.data || r.data.length === 0) { el.innerHTML = '<div class="empty-state">No roles found</div>'; return; }
+    let h = '<table class="doc-table"><thead><tr><th>Name</th><th>Permission</th><th>Role ID</th></tr></thead><tbody>';
+    r.data.forEach(role => {
+        h += `<tr><td><strong>${role.name}</strong></td>
+        <td><span class="type-badge type-report">${role.permission}</span></td>
+        <td><span class="id-display">${role.id.substring(0,10)}… <button class="btn-copy" onclick="copyId('${role.id}',this)">Copy</button></span></td></tr>`;
+    });
+    h += '</tbody></table>';
+    el.innerHTML = h;
+}
+
+async function doUpload() {
+    const fd = new FormData();
+    fd.append('title', document.getElementById('docTitle').value);
+    fd.append('company_name', document.getElementById('docCompany').value);
+    fd.append('document_type', document.getElementById('docType').value);
+    fd.append('file', document.getElementById('docFile').files[0]);
+    await api('POST', '/documents/upload', fd, 'resp-upload');
+}
+
+async function doGetDocs() {
+    const r = await api('GET', '/documents', null, null);
+    const el = document.getElementById('docsTable');
+    if (!r || !r.data || r.data.length === 0) { el.innerHTML = '<div class="empty-state">No documents found</div>'; return; }
+    let h = `<table class="doc-table"><thead><tr><th>Title</th><th>Company</th><th>Type</th><th>Document ID</th><th>Date</th><th></th></tr></thead><tbody>`;
+    r.data.forEach(d => {
+        h += `<tr>
+        <td><strong>${d.title}</strong></td>
+        <td>${d.company_name}</td>
+        <td><span class="type-badge type-${d.document_type}">${d.document_type}</span></td>
+        <td><span class="id-display">${d.id.substring(0,10)}… <button class="btn-copy" onclick="copyId('${d.id}',this)">Copy</button></span></td>
+        <td style="font-size:11px;color:var(--text-secondary);white-space:nowrap">${new Date(d.created_at).toLocaleDateString()}</td>
+        <td><button class="btn btn-danger btn-sm" onclick="doDelDoc('${d.id}')">Del</button></td></tr>`;
+    });
+    h += '</tbody></table>';
+    el.innerHTML = h;
+}
+
+async function doDelDoc(id) {
+    if (!confirm('Delete?')) return;
+    await api('DELETE', `/documents/${id}`, null, 'resp-docs');
+    doGetDocs();
+}
+
+async function doGetSingleDoc() { await api('GET', `/documents/${document.getElementById('getDocId').value}`, null, 'resp-singledoc'); }
+
+async function doMetaSearch() {
+    const p = new URLSearchParams();
+    const t = document.getElementById('msTitle').value;
+    const c = document.getElementById('msCompany').value;
+    const tp = document.getElementById('msType').value;
+    if (t) p.append('title', t);
+    if (c) p.append('company_name', c);
+    if (tp) p.append('document_type', tp);
+    const r = await api('GET', '/documents/search?' + p.toString(), null, null);
+    const el = document.getElementById('metaResults');
+    if (!r || !r.data || r.data.length === 0) { el.innerHTML = '<div class="empty-state">No results</div>'; return; }
+    let h = '';
+    r.data.forEach(d => {
+        h += `<div class="result-card">
+        <div class="result-meta"><span class="result-tag">${d.document_type}</span><strong>${d.title}</strong> — ${d.company_name}</div>
+        <div style="font-size:11px;color:var(--text-secondary)">ID: <span class="id-display">${d.id.substring(0,10)}… <button class="btn-copy" onclick="copyId('${d.id}',this)">Copy</button></span></div>
+        </div>`;
+    });
+    el.innerHTML = h;
+}
+
+async function doIndex() { await api('POST', `/rag/index-document?document_id=${document.getElementById('indexDocId').value}`, null, 'resp-index'); }
+async function doRemoveIndex() { await api('DELETE', `/rag/remove-document/${document.getElementById('removeDocId').value}`, null, 'resp-removeindex'); }
+
+async function doSearch() {
+    const q = document.getElementById('searchQuery').value;
+    const k = parseInt(document.getElementById('searchTopK').value);
+    const r = await api('POST', '/rag/search', { query: q, top_k: k }, null);
+    const el = document.getElementById('searchResults');
+    if (!r || !r.data || !r.data.results || r.data.results.length === 0) {
+        el.innerHTML = '<div class="empty-state">No results. Index a document first.</div>';
+        return;
+    }
+    let h = `<div style="background:var(--code-bg);border:1px solid var(--border);border-radius:7px;padding:12px 16px;margin-bottom:12px;font-size:12px;line-height:2">
+    <strong>Retrieval Pipeline</strong><br>
+    <span style="color:var(--accent)">❶ Query:</span> "${r.data.query}"
+    → <span style="color:var(--accent)">❷ Embedding</span> (all-MiniLM-L6-v2, 384-dim vector)
+    → <span style="color:var(--accent)">❸ Vector Search</span> (ChromaDB, cosine similarity, top 20 candidates)
+    → <span style="color:var(--accent)">❹ Reranking</span> (keyword overlap + vector score)
+    → <span style="color:var(--accent)">❺ Top ${r.data.results.length} Results</span> returned
+    </div>`;
+    r.data.results.forEach(res => {
+        const sc = res.score > 0.5 ? 'score-high' : res.score > 0.25 ? 'score-mid' : 'score-low';
+        h += `<div class="result-card">
+        <div class="result-meta">
+            <span class="result-score ${sc}">${res.score.toFixed(4)}</span>
+            <span class="result-tag">${res.title}</span>
+            <span class="result-tag">${res.company_name}</span>
+        </div>
+        <div class="result-text">${hl(res.chunk_text, q)}</div>
+        </div>`;
+    });
+    el.innerHTML = h;
+}
+
+function hl(t, q) {
+    const ws = q.toLowerCase().split(/\s+/);
+    let r = t;
+    ws.forEach(w => {
+        if (w.length > 2) r = r.replace(new RegExp(`(${w})`, 'gi'), '<mark style="background:#fef08a;padding:0 1px;border-radius:2px">$1</mark>');
+    });
+    return r;
+}
+
+async function doGetContext() {
+    const r = await api('GET', `/rag/context/${document.getElementById('contextDocId').value}`, null, null);
+    const el = document.getElementById('contextResults');
+    if (!r || !r.data || !r.data.chunks || r.data.chunks.length === 0) {
+        el.innerHTML = '<div class="empty-state">No chunks. Index the document first.</div>';
+        return;
+    }
+    let h = `<div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">${r.data.total_chunks} chunks indexed</div>`;
+    r.data.chunks.forEach(c => {
+        h += `<div class="result-card">
+        <div class="result-meta"><span class="result-tag">Chunk ${c.chunk_index}</span></div>
+        <div class="result-text">${c.text}</div>
+        </div>`;
+    });
+    el.innerHTML = h;
+}
+
+async function doListUsers() {
+    const r = await api('GET', '/users', null, null);
+    const el = document.getElementById('usersList');
+    if (!r || !r.data || r.data.length === 0) { el.innerHTML = '<div class="empty-state">No users</div>'; return; }
+    let h = '<table class="doc-table"><thead><tr><th>Username</th><th>Email</th><th>User ID</th><th>Role ID</th></tr></thead><tbody>';
+    r.data.forEach(u => {
+        h += `<tr>
+        <td><strong>${u.username}</strong></td>
+        <td>${u.email}</td>
+        <td><span class="id-display">${u.id.substring(0,10)}… <button class="btn-copy" onclick="copyId('${u.id}',this)">Copy</button></span></td>
+        <td>${u.role_id
+            ? `<span class="id-display">${u.role_id.substring(0,10)}… <button class="btn-copy" onclick="copyId('${u.role_id}',this)">Copy</button></span>`
+            : '<em style="color:var(--text-secondary)">none</em>'
+        }</td></tr>`;
+    });
+    h += '</tbody></table>';
+    el.innerHTML = h;
+}
+</script>
+</body>
+</html>
