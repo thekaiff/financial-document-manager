@@ -453,3 +453,15 @@ def get_context(document_id: str, current_user: User = Depends(get_current_user)
 def health():
     """Check if the API is running."""
     return {"status": "running", "docs": "/docs"}
+
+
+
+@app.get("/debug/text/{document_id}", tags=["Health"])
+def debug_text(document_id: str, current_user: User = Depends(get_current_user)):
+    """Temporary: see extracted text of a document."""
+    db = get_db()
+    doc = db.query(Document).filter(Document.id == document_id).first()
+    db.close()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Not found")
+    return {"id": doc.id, "text_length": len(doc.content_text), "text_preview": doc.content_text[:500]}
