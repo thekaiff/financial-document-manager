@@ -5,3 +5,4 @@ __pycache__/
 *.pyc
 venv/
 .env
+preview/financial_doc_manager.mp4
