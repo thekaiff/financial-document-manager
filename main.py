@@ -10,7 +10,8 @@ from schemas import (
 )
 from auth import hash_password, verify_password, create_token, verify_token
 import vector_store
-
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 # ── Create tables ──
 Base.metadata.create_all(bind=engine)
@@ -37,6 +38,10 @@ A system to **store, manage, and search** financial documents using AI-powered s
     """,
     version="1.0.0",
 )
+
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.mount("/ui", StaticFiles(directory="static", html=True), name="ui")
+
 
 # This creates the "Authorize" button in Swagger UI
 security = HTTPBearer()
@@ -177,6 +182,13 @@ def create_role(data: RoleCreate, current_user: User = Depends(get_current_user)
     db.close()
     return role
 
+@app.get("/roles", tags=["Roles"])
+def list_roles(current_user: User = Depends(get_current_user)):
+    """List all available roles with their IDs."""
+    db = get_db()
+    roles = db.query(Role).all()
+    db.close()
+    return [{"id": r.id, "name": r.name, "permission": r.permission} for r in roles]
 
 @app.post("/users/assign-role", tags=["Roles"])
 def assign_role(data: AssignRole, current_user: User = Depends(get_current_user)):
@@ -358,7 +370,22 @@ def delete_document(document_id: str, current_user: User = Depends(get_current_u
     db.close()
     return {"message": f"Document '{doc.title}' deleted"}
 
+@app.delete("/users/{user_id}", tags=["Roles"])
+def delete_user(user_id: str, current_user: User = Depends(get_current_user)):
+    """Delete a user. Admin only."""
+    check_permission(current_user, "full_access")
 
+    db = get_db()
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        db.close()
+        raise HTTPException(status_code=404, detail="User not found")
+
+    username = user.username
+    db.delete(user)
+    db.commit()
+    db.close()
+    return {"message": f"User '{username}' deleted"}
 # ─────────────────────────────────────────────
 # RAG - AI SEMANTIC SEARCH
 # ─────────────────────────────────────────────
